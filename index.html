@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Deutsches A1 Verbwörterbuch</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    body { 
+      margin:0; min-height:100vh; font-family:'Inter',system-ui,sans-serif;
+      color:#23234b; background:linear-gradient(120deg,#fbc2eb 0%,#a6c1ee 100%);
+      display:flex; flex-direction:column; align-items:center; 
+    }
+    h1 { 
+      font-size:2.2rem; font-weight:700; margin:50px 0 25px 0; text-align:center;
+      letter-spacing:-1.5px;
+    }
+    .input-card {
+      background:#fff; border-radius:18px; box-shadow:0 2px 20px #b1b8e633;
+      padding:38px 28px 24px 28px; 
+      min-width:350px; width:100%; max-width:520px;
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      margin:0 auto 32px auto;
+    }
+    .input-row {
+      width:100%; display:flex; gap:12px; align-items:center; justify-content:center;
+      margin-bottom:18px; flex-wrap:wrap;
+    }
+    .input-row label { font-size:1.08rem; font-weight:500; margin-right:8px; color:#4e4e4e;}
+    input,select,button {
+      padding:14px 22px; font-size:1.19rem; border-radius:12px; border:1.2px solid #c0d2f7;
+      background:#f7f9fc; outline:none;
+    }
+    input {min-width:230px; text-align:center;}
+    input:focus,select:focus {border:1.5px solid #7f9cf5; background:#fff;}
+    button {
+      background:linear-gradient(90deg,#7f9cf5 60%,#fbc2eb 100%);
+      color:#23234b; font-weight:700; border:none; box-shadow:0 2px 12px #ced9f7b0;
+      cursor:pointer; letter-spacing:0.2px; min-width:112px; font-size:1.1rem;
+    }
+    button:hover {filter:brightness(1.06);}
+    #result {
+      width:100%; max-width:520px; margin:0 auto; min-height:60px;
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+    }
+    .card {
+      background:#fff; border-radius:16px; box-shadow:0 1px 12px #a6c1ee26;
+      padding:28px 22px 18px 22px; margin-bottom:24px; min-width:310px;
+      animation:fadein 0.95s cubic-bezier(.23,.97,.44,1.01);
+      opacity:0; transform:translateY(24px); animation-fill-mode:forwards;
+    }
+    @keyframes fadein {
+      from {opacity:0; transform:translateY(24px);}
+      to {opacity:1; transform:none;}
+    }
+    .card h2 {margin-top:0; font-size:1.38rem; font-weight:700; color:#7f9cf5;}
+    table { border-collapse:collapse; width:100%; margin:12px 0 10px 0;}
+    th,td {padding:9px 9px; text-align:left; font-size:1.09rem;}
+    th {color:#7f9cf5; font-weight:700;}
+    tr:nth-child(even) {background:#f7f9fd}
+    .example {background: #f3f6ff; color:#4a4a7a; border-radius:7px; padding:9px 10px; margin-top:12px; font-size:1.09rem; font-style:italic;}
+    .noverb-card {padding:24px 12px; background:#fff1f3; border-radius:13px; box-shadow:0 2px 8px #fbc2eb1a; color:#cc2d55; margin-bottom:14px; text-align:center;}
+    @media(max-width:600px){
+      h1{font-size:1.05rem;}
+      .input-card{padding:14px 4vw}
+      .input-row{flex-direction:column;gap:10px;}
+      #result {max-width:98vw;}
+      .card {min-width:unset;}
+    }
+  </style>
+</head>
+<body>
+  <h1>Deutsches A1 Verbwörterbuch</h1>
+  <div class="input-card">
+    <form id="verbForm" autocomplete="off">
+      <div class="input-row">
+        <label for="verbInput">동사(Infinitiv)</label>
+        <input id="verbInput" placeholder="예: machen, studieren, laufen, zumachen, essen" autofocus />
+      </div>
+      <div class="input-row">
+        <label for="tenseSelect">시제/형태</label>
+        <select id="tenseSelect">
+          <option value="pres">Präsens</option>
+          <option value="perf">Perfekt</option>
+        </select>
+        <label for="uiLang">언어</label>
+        <select id="uiLang">
+          <option value="de">Deutsch</option>
+          <option value="kr">한국어</option>
+        </select>
+        <button type="submit" id="conjBtn">변화 보기</button>
+      </div>
+    </form>
+  </div>
+  <div id="result"></div>
+
+<script>
+const separablePrefixes = ['ab','an','auf','aus','bei','ein','mit','nach','vor','zu','zurück','los'];
+function isSeparable(verb) {
+  for (const p of separablePrefixes) {
+    if (verb.startsWith(p) && verb.length > p.length+1) return p;
+  }
+  return null;
+}
+// 불규칙 동사 DB (원하는 만큼 추가·수정 가능!)
+const verbDB = {
+  'sein': {pres:['bin','bist','ist','sind','seid','sind'], partizip:'gewesen', aux:'sein', ex:['Ich bin Student.','나는 학생이다.']},
+  'haben': {pres:['habe','hast','hat','haben','habt','haben'], partizip:'gehabt', aux:'haben', ex:['Du hast ein Buch.','너는 책을 가지고 있다.']},
+  'studieren': {pres:['studiere','studierst','studiert','studieren','studiert','studieren'], partizip:'studiert', aux:'haben', ex:['Ich studiere Deutsch.','나는 독일어를 전공한다.']},
+  'laufen': {pres:['laufe','läufst','läuft','laufen','lauft','laufen'], partizip:'gelaufen', aux:'sein', ex:['Er läuft schnell.','그는 빨리 달린다.']},
+  'essen': {pres:['esse','isst','isst','essen','esst','essen'], partizip:'gegessen', aux:'haben', ex:['Wir essen Pizza.','우리는 피자를 먹는다.']},
+  'spielen': {pres:['spiele','spielst','spielt','spielen','spielt','spielen'], partizip:'gespielt', aux:'haben', ex:['Sie spielen Fußball.','그들은 축구를 한다.']},
+  'gehen': {pres:['gehe','gehst','geht','gehen','geht','gehen'], partizip:'gegangen', aux:'sein', ex:['Ich gehe nach Hause.','나는 집에 간다.']},
+  'zumachen': {pres:['mache zu','machst zu','macht zu','machen zu','macht zu','machen zu'], partizip:'zugemacht', aux:'haben', ex:['Ich mache die Tür zu.','나는 문을 닫는다.']}
+};
+const persons = ['ich','du','er/sie/es','wir','ihr','sie/Sie'];
+const habenPres = ['habe','hast','hat','haben','habt','haben'];
+const seinPres  = ['bin','bist','ist','sind','seid','sind'];
+
+// 규칙동사 변화 + 분리동사 지원 + -ieren형 지원
+function conjugateRegularPres(verb) {
+  const sep = isSeparable(verb);
+  let stemVerb = verb;
+  if (sep) stemVerb = verb.slice(sep.length);
+  let stem = stemVerb;
+  if (stemVerb.endsWith('en')) stem = stemVerb.slice(0,-2);
+  else if (stemVerb.endsWith('n')) stem = stemVerb.slice(0,-1);
+  let endings = ['e','st','t','en','t','en'];
+  if (/([sßzx])$/.test(stem)) endings[1] = 't';
+  if (/[dt]$/.test(stem)) endings = ['e','est','et','en','et','en'];
+  const forms = endings.map(end => stem+end);
+  return sep ? forms.map(f => f + ' ' + sep) : forms;
+}
+function makeRegularPartizip(verb) {
+  // -ieren: studieren → studiert
+  if (verb.endsWith('ieren')) {
+    return verb.slice(0,-3)+'t';
+  }
+  let stem = verb.endsWith('en') ? verb.slice(0,-2) : verb;
+  return 'ge'+stem+'t';
+}
+function guessAuxiliary(verb) {
+  const seinList = ['gehen','kommen','fahren','laufen','reisen','aufstehen','aufwachen','passieren','werden','sein','bleiben'];
+  return seinList.includes(verb) ? 'sein' : 'haben';
+}
+
+// 폼 제출/엔터키 반응 및 결과 표시
+document.getElementById("verbForm").onsubmit = function(e){
+  e.preventDefault(); searchVerb();
+};
+document.getElementById("verbInput").addEventListener("keydown", function(e){
+  if(e.key==="Enter") { e.preventDefault(); searchVerb(); }
+});
+
+function searchVerb() {
+  const raw = document.getElementById('verbInput').value.trim().toLowerCase();
+  const tense = document.getElementById('tenseSelect').value;
+  const uiLang = document.getElementById('uiLang').value;
+  const resultDiv = document.getElementById('result');
+  if(!raw) {
+    resultDiv.innerHTML = `<div class="noverb-card">동사를 입력하세요.</div>`;
+    return;
+  }
+  let exist = verbDB[raw];
+  let pres, partizip, aux, ex;
+  if(exist){
+    pres = exist.pres; partizip = exist.partizip; aux = exist.aux; ex = exist.ex;
+  }else{
+    pres = conjugateRegularPres(raw);
+    partizip = makeRegularPartizip(raw);
+    aux = guessAuxiliary(raw);
+    ex = null;
+  }
+  let html = `<div class="card"><h2>${raw}</h2><table><thead><tr><th>${uiLang==='kr'?'인칭':'Person'}</th><th>${uiLang==='kr'?'형태':'Form'}</th></tr></thead><tbody>`;
+  if(tense==="pres"){
+    for(let i=0;i<6;i++){
+      html += `<tr><td>${persons[i]}</td><td>${pres[i]}</td></tr>`;
+    }
+  }else if(tense==="perf"){
+    let auxForms = aux==='sein'?seinPres:habenPres;
+    for(let i=0;i<6;i++){
+      html += `<tr><td>${persons[i]}</td><td>${auxForms[i]} ${partizip}</td></tr>`;
+    }
+  }
+  html += `</tbody></table>`;
+  if(ex) html += `<div class="example">${ex[0]}<br><span style="color:#663399;font-size:0.97em">${ex[1]}</span></div>`;
+  html += `</div>`;
+  resultDiv.innerHTML = html;
+}
+</script>
+</body>
+</html>
